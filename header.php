@@ -19,7 +19,7 @@
                 <path d="M0,0 L128,220.8 L256,0 L204.8,0 L128,132.48 L51.2,0 L0,0 Z" fill="#41B883"></path>
                 <path d="M51.2,0 L128,132.48 L204.8,0 L153.6,0 L128,44.16 L102.4,0 L51.2,0 Z" fill="#35495E"></path>
             </svg>
-            <span style="letter-spacing: -0.5px;">RostoDev</span>
+            <span style="letter-spacing: -0.5px;">ClaudeDev</span>
         </a>
 
         <ul class="nav-links">
