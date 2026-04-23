@@ -11,11 +11,6 @@ if (!isset($_SESSION['id'])) {
     header('Location: connexion.php');
     exit();
 }
-
-
-
-
-
 include 'header.php';
 ?>
 
