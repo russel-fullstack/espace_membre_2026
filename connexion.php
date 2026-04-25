@@ -1,28 +1,31 @@
 <?php
+
 declare(strict_types=1);
 session_start();
 require_once 'database.php';
 require_once 'flash.php';
 
-function authenticateUser(PDO $pdo, string $mailconnect, string $mdpconnect) : string {
-    if(empty($mailconnect) || empty($mdpconnect)) return "Tous les champs doivent être remplis.";
-    
+function authenticateUser(PDO $pdo, string $mailconnect, string $mdpconnect): string
+{
+    if (empty($mailconnect) || empty($mdpconnect)) return "Tous les champs doivent être remplis.";
+
     $requser = $pdo->prepare("SELECT * FROM membres WHERE mail = :mail");
     $requser->execute([':mail' => $mailconnect]);
     $userinfo = $requser->fetch();
- 
-    if(!$userinfo || !password_verify($mdpconnect, $userinfo['motdepasse'])) return 'Indentifiants invalides !';
-    
-    
+
+    if (!$userinfo || !password_verify($mdpconnect, $userinfo['motdepasse'])) return 'Indentifiants invalides !';
+
+
     $_SESSION['id'] = $userinfo['id'];
     $_SESSION['pseudo'] = $userinfo['pseudo'];
     $_SESSION['mail'] = $userinfo['mail'];
     $_SESSION['role'] = $userinfo['role'];
-   
+    $_SESSION['avatar'] = $userinfo['avatar'];
+
 
     return "success";
 }
-if($_SERVER['REQUEST_METHOD'] === 'POST'){
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $mailconnect   = filter_input(INPUT_POST, 'mailconnect', FILTER_SANITIZE_EMAIL) ?? '';
     $mdpconnect    = $_POST['mdpconnect'] ?? '';
     $result = authenticateUser($pdo, $mailconnect, $mdpconnect);
@@ -45,22 +48,21 @@ include 'header.php';
     <h2 class="text-center" style="margin-bottom: 2rem;">Connexion</h2>
 
     <form method="POST" action="">
-
         <div class="form-group">
             <label for="mailconnect">Adresse E-mail</label>
-            <input type="email" placeholder="votre@email.com" id="mailconnect" name="mailconnect"  />
+            <input type="email" placeholder="votre@email.com" id="mailconnect" name="mailconnect" />
         </div>
 
         <div class="form-group">
             <label for="mdpconnect">Mot de passe</label>
-            <input type="password" placeholder="8 caractères min. (lettre + chiffre)" id="mdpconnect" name="mdpconnect"  />
+            <input type="password" placeholder="8 caractères min. (lettre + chiffre)" id="mdpconnect" name="mdpconnect" />
         </div>
         <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">
             Se connecter
         </button>
 
         <p class="text-center mt-4" style="font-size: 0.9rem; color: #94a3b8;">
-           Vous n'avez pas de compte ? <a href="inscription.php" style="color: var(--vue-green); text-decoration: none;">S'inscrire</a>
+            Vous n'avez pas de compte ? <a href="inscription.php" style="color: var(--vue-green); text-decoration: none;">S'inscrire</a>
         </p>
     </form>
 </div>
