@@ -4,15 +4,94 @@ session_start();
 require 'database.php';
 require 'flash.php';
 
-$erreur = "";
-$msg = "";
+$erreur = null;
+$msg = null;
 
 if (!isset($_SESSION['id'])) {
     header('Location: connexion.php');
     exit();
 }
-include 'header.php';
-?>
+
+/**
+ * Utility: Check if a value is already taken
+ */
+function isTaken(PDO $pdo, string $col, string $val, int $id): bool {
+    $stmt = $pdo->prepare("SELECT id FROM membres WHERE $col = :val AND id != :id");
+    $stmt->execute([':val' => $val, ':id' => $id]);
+    return (bool)$stmt->fetch();
+}
+
+function handlePseudo(PDO $pdo,  string $val, int $id ) : ?string{
+   if(empty($val)) return null;
+   if(strlen($val) > 255) return "Pseudo trop long";
+   if(isTaken( $pdo, 'pseudo', $val, $id)) return "Pseudo déjà utilisé";
+
+   $stmt = $pdo->prepare("UPDATE membres SET pseudo = :pseudo WHERE id = :id");
+   $stmt->execute([':pseudo' => $val, ':id' => $id]);
+   $_SESSION['pseudo'] = $val;
+    return 'success';
+}
+function handleEmail(PDO $pdo, int $id, ?string $val, string $current ) : ?string{
+   if(empty($val) || $val === $current) return null;
+   if(!filter_var($val, FILTER_VALIDATE_EMAIL)) return "Email invalide";
+   if(isTaken( $pdo, 'mail', $val, $id)) return "Email déjà utilisé";
+
+   $stmt = $pdo->prepare("UPDATE membres SET mail = :val WHERE id = :id");
+   $stmt->execute([':val' => $val, ':id' => $id]);
+   $_SESSION['mail'] = $val;
+    return 'success';
+}
+function handlePassword(PDO $pdo, int $id, string $p1, string $p2 ) : ?string{
+   if(empty($p1)) return null;
+   if($p1 !== $p2) return "Les mots de passe ne correspondent pas";
+   if(strlen($p1) < 8) return "Le mot de passe doit faire au moins 8 caractères";
+
+
+   $stmt = $pdo->prepare("UPDATE membres SET motdepasse = :val WHERE id = :id");
+   $stmt->execute([':val' => password_hash($p1, PASSWORD_DEFAULT), ':id' => $id]);
+    return 'success';
+}
+function handleAvatar (PDO $pdo, int $id, array $file): ?string {
+    if(empty($file['name'])) return null;
+    $extension = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+    $path = "membres/avatars/";
+    if(!in_array($extension, ['jpg', 'jpeg', 'png', 'gif'])) return "Format de fichier non supporté";
+    if($file['size'] > 2 * 1024 * 1024) return "Le fichier est trop volumineux (max 2Mo)";
+
+    if(!is_dir($path)) mkdir($path, 0755, true);
+    $filename = "$id.$extension";
+    var_dump($filename);
+    die();
+    return 'success';
+}
+
+if($_SERVER['REQUEST_METHOD'] === 'POST'){
+    $userid= (int)$_SESSION['id'];
+    $modifPseudo = handlePseudo($pdo, $_POST['newpseudo'] ?? '',$userid);
+    $modifEmail = handleEmail($pdo, $userid, filter_input(INPUT_POST, 'newmail', FILTER_SANITIZE_EMAIL), $_SESSION['mail'] ?? '');
+    $modifPassword = handlePassword($pdo, $userid, $_POST['newmdp1'] ?? '', $_POST['newmdp2'] ?? '');
+    $resAvatar = handleAvatar($pdo, $userid, $_FILES['avatar'] ?? []);
+     $erreur = match(true){
+        $modifPseudo !== 'success' => $modifPseudo,
+        $modifEmail !== 'success' => $modifEmail,
+        $modifPassword !== 'success' => $modifPassword,
+        $resAvatar !== 'success' => $resAvatar,
+        default => null
+     };
+
+     if(!$erreur && ($modifPseudo || $modifEmail || $modifPassword || $resAvatar)) {
+        flash_set('success', 'Profil mis à jour avec succès'); 
+         header("Location: editionprofil.php");
+        exit();
+     }
+     if($erreur){
+        flash_set('error', $erreur); 
+         header("Location: editionprofil.php");
+        exit();
+     }
+
+}
+?><?php include 'header.php'; ?>
 
 <div class="dashboard-grid">
     <aside class="sidebar">
@@ -39,11 +118,11 @@ include 'header.php';
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
                     <div class="form-group">
                         <label>Pseudo</label>
-                        <input type="text" name="newpseudo" placeholder="Pseudo" value="" />
+                        <input type="text" name="newpseudo" placeholder="Pseudo" value="<?= isset($_SESSION['pseudo']) ? $_SESSION['pseudo'] : '' ?>" />
                     </div>
                     <div class="form-group">
                         <label>Email</label>
-                        <input type="email" name="newmail" placeholder="Mail" value="" />
+                        <input type="email" name="newmail" placeholder="Mail" value="<?= isset($_SESSION['mail']) ? $_SESSION['mail'] : '' ?>" />
                     </div>
                 </div>
 
@@ -54,7 +133,7 @@ include 'header.php';
                     </div>
                     <div class="form-group">
                         <label>Confirmation</label>
-                        <input type="password" name="newmdp2" placeholder="Confirmez le nouveau mdp" />
+                        <input type="password" name="newmdp2" placeholder="Confirmez le nouveau mot de passe" />
                     </div>
                 </div>
 
